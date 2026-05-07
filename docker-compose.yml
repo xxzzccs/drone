@@ -1,0 +1,153 @@
+services:
+  drone:
+    container_name: drone
+    image: drone/drone:2.28.2-linux-arm64
+    restart: unless-stopped
+    networks:
+      - internal
+    volumes:
+      - ./drone_data:/var/lib/drone
+      - ./certs/drone.example.com.crt:/usr/local/share/ca-certificates/ca.crt:ro
+    environment:
+      - DRONE_SERVER_HOST=drone.example.com
+      - DRONE_SERVER_PROTO=https
+      - DRONE_GITEA_SERVER=https://git.example.com/
+      - DRONE_GITEA_CLIENT_ID=something
+      - DRONE_GITEA_CLIENT_SECRET=something
+      - DRONE_RPC_SECRET=something_random
+      - DRONE_GITEA_SKIP_VERIFY=true
+    extra_hosts:
+      -  "git.example.com:host-gateway"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.drone.rule=Host(`drone.example.com`)"
+      - "traefik.http.routers.drone.entrypoints=websecure"
+      - "traefik.http.routers.drone.tls=true"
+      - "traefik.http.services.drone.loadbalancer.server.port=80"
+
+  gitea:
+    container_name: gitea
+    image: gitea/gitea:latest
+    networks:
+     - internal
+    volumes:
+      - ./data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "2222:22"
+    environment:
+      - GITEA__database__DB_TYPE=sqlite3
+      - GITEA__server__ROOT_URL=https://git.example.com/
+      - GITEA__server__SSH_PORT=2222
+      - GITEA__server__SSH_LISTEN_PORT=22
+      - GITEA__service__REQUIRE_SIGNIN_VIEW=true
+      - GITEA__packages__ENABLED=true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gitea.rule=Host(`git.example.com`)"
+      - "traefik.http.routers.gitea.entrypoints=websecure"
+      - "traefik.http.routers.gitea.tls=true"
+      # - "traefik.http.routers.gitea.middlewares=traefik-forward-auth"
+      # - "traefik.http.middlewares.traefik-forward-auth.forwardauth.address=http://traefik-forward-auth:4181"
+      - "traefik.http.services.gitea.loadbalancer.server.port=3000"
+      
+      # Registry
+      - "traefik.http.routers.gitea-registry.rule=Host(`git.example.com`) && PathPrefix(`/v2/`)"
+      - "traefik.http.routers.gitea-registry.entrypoints=websecure"
+      - "traefik.http.routers.gitea-registry.tls=true"
+      - "traefik.http.routers.gitea-registry.priority=100"
+      - "traefik.http.routers.gitea-registry.service=gitea"
+  
+  traefik:
+    container_name: traefik
+    image: traefik:3.6
+    depends_on:
+      - proxy
+      # - traefik-forward-auth
+    networks:
+      - docker-api
+      - internal
+    volumes:
+      - ./certs:/certs:ro
+      - ./dynamic:/dynamic:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    command:
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls=true"
+
+      - "--providers.file.filename=/dynamic/tls.yml"
+      
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=internal"
+      - "--providers.docker.endpoint=tcp://proxy:2375"
+
+      - "--api.insecure=false"
+
+      - "--log.level=INFO"
+      - "--accesslog=true"
+
+  
+  # traefik-forward-auth:
+  #   container_name: traefik-forward-auth
+  #   image: thomseddon/traefik-forward-auth:latest
+  #   environment:
+  #     - PROVIDERS_GOOGLE_CLIENT_ID=something
+  #     - PROVIDERS_GOOGLE_CLIENT_SECRET=something
+  #     - SECRET=something-random
+  #     - AUTH_HOST=https://git.example.com:8443/
+  #     - INSECURE_COOKIE=false
+  #   ports:
+  #   - "4181:4181"
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.services.auth.loadbalancer.server.port=4181"
+  #   networks:
+  #     - docker-api
+  #     - internal
+     
+  proxy:
+    container_name: docker-socket-proxy
+    image: ghcr.io/tecnativa/docker-socket-proxy:master
+    restart: on-failure
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-api
+    ports:
+      - "2375:2375"
+    environment:
+      - CONTAINERS=1
+      - CONTAINERS_INSPECT=1
+      - CLIENT=1
+      - IMAGES=1
+      - NETWORKS=1
+      - NETWORKS_INSPECT=1
+      - VOLUMES=1
+      - EXEC=1
+      - INFO=1
+      - GET=1
+      - POST=1
+      - SERVICES=1
+      - SERVER=1
+      - NODES=1
+      - PING=1
+      - VERSION=1
+
+
+
+
+
+
+networks:
+  docker-api:
+    name: docker-api
+  internal:
+    name: internal

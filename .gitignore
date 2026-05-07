@@ -1,0 +1,8 @@
+#Ignore the gitea/drone config and data files
+data/
+drone_data/
+
+#Ignore the secrets 
+secrets.txt
+
+.DS_Store
