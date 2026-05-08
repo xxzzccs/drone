@@ -1,0 +1,9 @@
+kind: pipeline
+name: default
+
+steps:
+- name: test
+image: python:3.13
+commands:
+    - python --version 
+    - python3 main.py
