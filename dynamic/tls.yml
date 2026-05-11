@@ -1,0 +1,9 @@
+tls:
+  certificates:
+    - certFile: /certs/local.crt
+      keyFile: /certs/local.key
+    - certFile: /certs/git.example.com.crt
+      keyFile: /certs/git.example.com.key
+    - certFile: /certs/drone.example.com.crt
+      keyFile: /certs/drone.example.com.key
+      

@@ -1,0 +1,221 @@
+services:
+  renovate:
+    container_name: renovate
+    image: renovate/renovate:latest
+    networks:
+      - internal
+    volumes:
+      - ./renovate_data:/tmp/renovate/cache
+    environment:
+      - RENOVATE_TOKEN=5734bfd8401530c224f2504eb6ceb713b5f636b6
+      - RENOVATE_PLATFORM=gitea
+      - RENOVATE_ENDPOINT=https://git.example.com
+      - RENOVATE_AUTODISCOVER=true
+      - LOG_LEVEL=info
+
+
+  ssh-drone-runner:
+    container_name: ssh_drone_runner
+    image: drone/drone-runner-ssh:latest
+    restart: on-failure
+    networks:
+      - docker-api
+      - internal
+    environment:
+      - DRONE_RPC_HOST=drone
+      - DRONE_RPC_PROTO=http
+      - DRONE_RPC_SECRET=e38a16c4f7c99068d88a0f0caabce293
+      - DRONE_RPC_SKIP_VERIFY=false
+      - DOCKER_HOST=tcp://proxy:2375
+      - DRONE_RUNNER_NAME=ssh-runner
+      - DRONE_RUNNER_CAPACITY=2
+
+  docker-drone-runner:
+    container_name: docker_drone_runner
+    image: drone/drone-runner-docker:latest
+    restart: on-failure
+    networks:
+      - docker-api
+      - internal
+    ports:
+      - "3000:3000"
+    environment:
+      - DRONE_RPC_HOST=drone.example.com
+      - DRONE_RPC_PROTO=https
+      - DRONE_RPC_SECRET=e38a16c4f7c99068d88a0f0caabce293
+      - DRONE_RPC_SKIP_VERIFY=false
+      - DRONE_UI_USERNAME=root
+      - DRONE_UI_PASSWORD=root
+      - DOCKER_HOST=tcp://proxy:2375
+      - DRONE_RUNNER_CAPACITY=2
+      - DRONE_RUNNER_NAME=docker-runner
+
+
+  drone:
+    container_name: drone
+    image: drone/drone:2.28.2-linux-amd64
+    restart: unless-stopped
+    networks:
+      - internal
+    ports:
+      - "80:80"
+    volumes:
+      - ./drone_data:/var/lib/drone
+      - ./certs/drone.example.com.crt:/usr/local/share/ca-certificates/ca.crt:ro
+    environment:
+      - DRONE_SERVER_HOST=drone.example.com
+      - DRONE_SERVER_PROTO=https
+      - DRONE_GITEA_SERVER=https://git.example.com
+      - DRONE_GITEA_CLIENT_ID=467f0f80-bca7-4e45-954c-ebb9a44b953d
+      - DRONE_GITEA_CLIENT_SECRET=gto_qlotld55ph7zy4wavg4yrwgeuu75tduef5h2aoyelymrs6uekb2a
+      - DRONE_RPC_SECRET=e38a16c4f7c99068d88a0f0caabce293
+      - DRONE_GITEA_SKIP_VERIFY=true
+      - DRONE_DATABASE_DRIVER=postgres
+      - DRONE_DATABASE_SOURCE=postgresql://
+    extra_hosts:
+      - "git.example.com:host-gateway"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.drone.rule=Host(`drone.example.com`)"
+      - "traefik.http.routers.drone.entrypoints=websecure"
+      - "traefik.http.routers.drone.tls=true"
+      - "traefik.http.services.drone.loadbalancer.server.port=80"
+
+  gitea:
+    container_name: gitea
+    image: gitea/gitea:latest
+    restart: unless-stopped
+    networks:
+     - internal
+    volumes:
+      - ./data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "2222:22"
+    environment:
+      - GITEA__database__DB_TYPE=sqlite3
+      - GITEA__server__ROOT_URL=https://git.example.com/
+      - GITEA__server__SSH_PORT=2222
+      - GITEA__server__SSH_LISTEN_PORT=22
+      - GITEA__service__REQUIRE_SIGNIN_VIEW=true
+      - GITEA__packages__ENABLED=true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gitea.rule=Host(`git.example.com`)"
+      - "traefik.http.routers.gitea.entrypoints=websecure"
+      - "traefik.http.routers.gitea.tls=true"
+      # - "traefik.http.routers.gitea.middlewares=traefik-forward-auth"
+      # - "traefik.http.middlewares.traefik-forward-auth.forwardauth.address=http://traefik-forward-auth:4181"
+      - "traefik.http.services.gitea.loadbalancer.server.port=3000"
+      
+      # Registry
+      - "traefik.http.routers.gitea-registry.rule=Host(`git.example.com`) && PathPrefix(`/v2/`)"
+      - "traefik.http.routers.gitea-registry.entrypoints=websecure"
+      - "traefik.http.routers.gitea-registry.tls=true"
+      - "traefik.http.routers.gitea-registry.priority=100"
+      - "traefik.http.routers.gitea-registry.service=gitea"
+  
+  postgres:
+    container_name: postgres
+    image: postgres:alpine
+    mem_limit: 128mb
+    networks:
+      - internal
+    volumes:
+      - ./postgres_data:/var/lib/postgres
+    environment:
+      - POSTGRES_USER=droner
+      - POSTGRES_PASSWORD=password
+      - postgres_data=drone
+    
+
+  traefik:
+    container_name: traefik
+    image: traefik:3.7
+    restart: always
+    depends_on:
+      - proxy
+      # - traefik-forward-auth
+    networks:
+      docker-api:
+      internal:
+        aliases:
+          - "drone.example.com"
+    volumes:
+      - ./certs:/certs:ro
+      - ./dynamic:/dynamic:ro
+    ports:
+      - "443:443"
+    command:
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls=true"
+
+      - "--providers.file.filename=/dynamic/tls.yml"
+      
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=internal"
+      - "--providers.docker.endpoint=tcp://proxy:2375"
+
+      - "--api.insecure=false"
+
+      - "--log.level=INFO"
+      - "--accesslog=true"
+
+  
+  # traefik-forward-auth:
+  #   container_name: traefik-forward-auth
+  #   image: thomseddon/traefik-forward-auth:latest
+  #   environment:
+  #     - PROVIDERS_GOOGLE_CLIENT_ID=something
+  #     - PROVIDERS_GOOGLE_CLIENT_SECRET=something
+  #     - SECRET=something-random
+  #     - AUTH_HOST=https://git.example.com:8443/
+  #     - INSECURE_COOKIE=false
+  #   ports:
+  #   - "4181:4181"
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.services.auth.loadbalancer.server.port=4181"
+  #   networks:
+  #     - docker-api
+  #     - internal
+     
+  proxy:
+    container_name: docker-socket-proxy
+    image: tecnativa/docker-socket-proxy:latest
+    restart: on-failure
+    ports:
+      - "2375:2375"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-api
+    environment:
+      - CONTAINERS=1
+      - CONTAINERS_INSPECT=1
+      - CLIENT=1
+      - IMAGES=1
+      - NETWORKS=1
+      - NETWORKS_INSPECT=1
+      - VOLUMES=1
+      - EXEC=1
+      - INFO=1
+      - GET=1
+      - POST=1
+      - SERVICES=1
+      - SERVER=1
+      - NODES=1
+      - PING=1
+      - VERSION=1
+      - DOCKER_EVENTS=1
+
+
+
+
+
+networks:
+  docker-api:
+  internal:
+    name: internal

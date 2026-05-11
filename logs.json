@@ -1,0 +1,76 @@
+[
+    {
+        "Name": "internal",
+        "Id": "62a0b983d2401d5c7c67e2b89f98ef49aeb0b0694cd92f4af492fbc4800a7f7f",
+        "Created": "2026-05-07T17:26:34.520291087+05:30",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv4": true,
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.20.0.0/16",
+                    "IPRange": "",
+                    "Gateway": "172.20.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Options": {},
+        "Labels": {
+            "com.docker.compose.config-hash": "316c9e3f65079a02e275169fee3c167ac8e3a89f5a9342ff58d81202159f69a6",
+            "com.docker.compose.network": "internal",
+            "com.docker.compose.project": "drone",
+            "com.docker.compose.version": "5.1.3"
+        },
+        "Containers": {
+            "32cfc422f273c858ecf0b21238e6370ad8a9ffe5f84ec3b42404119d97ae4e13": {
+                "Name": "drone_runner",
+                "EndpointID": "bbe2d343560dd4247e50595d611c78dfbec15e853aa2998b9f1bc41ef801540b",
+                "MacAddress": "0e:f9:f4:ca:d5:65",
+                "IPv4Address": "172.20.0.4/16",
+                "IPv6Address": ""
+            },
+            "ab26cfe0c6d1ac0de09198e0a8819837a6e45edb4ecc169a4086a4fa0f48ae64": {
+                "Name": "traefik",
+                "EndpointID": "d5053152ffa40950648820843e514c3219e8e7ef3b118d37ee7b6c61e012bf4c",
+                "MacAddress": "d6:57:2b:90:e6:ef",
+                "IPv4Address": "172.20.0.5/16",
+                "IPv6Address": ""
+            },
+            "b320e88a042106ebb5bce175d821655998f13716d1532f5ee8a46290e1e92b35": {
+                "Name": "drone",
+                "EndpointID": "b33f4999b9284aad31ec4c6744547a993e2a611edfcdf6d97b4f85aebe76f53c",
+                "MacAddress": "06:73:2e:57:14:a0",
+                "IPv4Address": "172.20.0.3/16",
+                "IPv6Address": ""
+            },
+            "f7896f567a36342ddaf02ad139e7d12b67a33afb190fc05b7ac0852558aee204": {
+                "Name": "gitea",
+                "EndpointID": "f5d80b303aab3166ea58d91ed723fe0fe8370a91f40c851177cb3db76836a072",
+                "MacAddress": "9e:b6:d0:31:c5:3c",
+                "IPv4Address": "172.20.0.2/16",
+                "IPv6Address": ""
+            }
+        },
+        "Status": {
+            "IPAM": {
+                "Subnets": {
+                    "172.20.0.0/16": {
+                        "IPsInUse": 7,
+                        "DynamicIPsAvailable": 65529
+                    }
+                }
+            }
+        }
+    }
+]
