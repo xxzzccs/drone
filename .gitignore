@@ -6,3 +6,8 @@ drone_data/
 secrets.txt
 
 .DS_Store
+
+#ignore secrets directory
+certs/
+data/
+
