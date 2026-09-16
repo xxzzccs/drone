@@ -19,9 +19,10 @@ This project was created to unerstand container orchestration, proxies, and infr
     |
     |
     |   
-    ____________________________        |           |               |
-    v           v               v
-    Service A   Service B   Service C
+    ___________________________
+    |           |             |
+    v           v             v
+    Service A   Service B    Service C
 
 ## Technologies
 
