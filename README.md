@@ -1,5 +1,9 @@
 # Drone
 
+**Author:** Aniruddha Sharma
+
+**Email:** aniruddhakirthisharma@gmail.com
+
 ## Overview
 
 This project deploys drone and gitea behind traefik as a reverse-proxy using docker-compose.
