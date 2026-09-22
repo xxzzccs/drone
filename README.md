@@ -14,18 +14,18 @@ This project was created to unerstand container orchestration, proxies, and infr
 
 ## Architecture
 
-    client 
-    | HTTPS
-    v
+      Client 
+        | HTTPS
+        v
     Traefik Forward Auth Proxy
-    |
-    v
-    |
-    |
-    |   
-    |
-    v   
-   Gitea
+        |
+        v
+        |
+        |
+        |   
+        |
+        v    
+      Gitea
 
 ## Technologies
 
