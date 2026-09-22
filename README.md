@@ -23,10 +23,9 @@ This project was created to unerstand container orchestration, proxies, and infr
     |
     |
     |   
-    ___________________________
-    |           |             |
-    v           v             v
-    Service A   Service B    Service C
+    |
+    v   
+   Gitea
 
 ## Technologies
 
